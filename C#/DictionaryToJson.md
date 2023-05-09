@@ -1,3 +1,4 @@
+```
 var model = new Dictionary<string, object>()
 {
     {"name", "steve" },
@@ -28,4 +29,4 @@ Console.WriteLine(result2);
 //要反序列化參考 https://dotblogs.com.tw/yc421206/2022/03/27/_net6_custom_jsonconverter_deserialize_dictionary_string_object
 
 Console.ReadKey();
-
+```
