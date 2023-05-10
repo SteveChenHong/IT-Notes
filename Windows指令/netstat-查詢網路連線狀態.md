@@ -41,10 +41,14 @@
 ```C:\WINDOWS\system32>netstat /?```
 
 顯示通訊協定統計資料與目前的 TCP/IP 網路連線  
--a            顯示所有連線和接聽的連接埠  
--b            顯示在建立各個連線或接聽連接埠時會用到的可執行檔  
--n            以數字格式顯示位址和連接埠號碼  
--o            顯示與各連線相關的擁有流程識別碼  
+-a 顯示所有連線和接聽的連接埠  
+-b 顯示在建立各個連線或接聽連接埠時會用到的可執行檔  
+-n 以數字格式顯示位址和連接埠號碼  
+-o 顯示與各連線相關的擁有流程識別碼  
+-p proto 顯示由 proto 指定之通訊協定的連線; proto  
+　　  　&nbsp;&nbsp;可以是以下任一項: TCP、UDP、TCPv6 或 UDPv6。若搭配 -s  
+　　　  &nbsp;&nbsp;選項使用來顯示各通訊協定的統計資料，proto 可以是以下任一項:  
+　　　　IP、IPv6、ICMP、ICMPv6、TCP、TCPv6、UDP 或 UDPv6。  
 .....
 
 ### 3.其它實用用法
@@ -71,3 +75,6 @@
 ```netstat –na 1 | find "4444" | find "ESTABLISHED"```  
 也可以針對特定 Port，不分對象的進行監控，  
 再透過 find "ESTABLISHED" 篩選  
+
+```netstat -a -p tcp | find "7218"```    
+只列出IPv4的監聽口
