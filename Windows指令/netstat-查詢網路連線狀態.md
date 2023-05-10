@@ -51,6 +51,23 @@
 　　　　IP、IPv6、ICMP、ICMPv6、TCP、TCPv6、UDP 或 UDPv6。  
 .....
 
+```C:\WINDOWS\system32>find /?```(powershell 好像只能用 findstr)  
+搜尋一或多個檔案中的文字字串。  
+
+FIND [/V] [/C] [/N] [/I] [/OFF[LINE]] "string" [[drive:][path]filename[ ...]]  
+ 
+  /V         顯示所有不包含指定字串的行。  
+  /C         只顯示包含字串的行數。  
+  /N         顯示每一行及它的行號。  
+  /I         當搜尋字串時，忽略字元的大小寫。  
+  /OFF[LINE] 不要略過有離線屬性集的檔案。  
+  "string"   指定要尋找的文字字串。  
+  [drive:][path]filename  
+指定要搜尋的一或多個檔案。  
+
+如果沒有指定路徑，FIND 會搜尋在提示時所輸入的文字  
+或者在其他的命令中搜尋。  
+
 ### 3.其它實用用法
 
 想監控特定連線的來源或 Port，一些小技巧，用例子：  
