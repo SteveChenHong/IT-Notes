@@ -78,3 +78,6 @@
 
 ```netstat -a -p tcp | find "7218"```    
 只列出IPv4的監聽口
+
+```netstat -a | find /c "7218"```  
+取得 7218 port 的筆數
