@@ -1,1 +1,2 @@
-1.
+ghz 觀察
+1.固定總呼叫次數(toal)、連線數(connections)，遞增併發數(concurrency)，結果
