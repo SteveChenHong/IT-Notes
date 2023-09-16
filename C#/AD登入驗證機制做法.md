@@ -10,20 +10,28 @@ LDAP（Lightweight Directory Access Protocol）是一種用於訪問和維護分
 ````
 using System.DirectoryServices;
 
+// 用於驗證使用者認證的方法
+// 參數 username: 要驗證的使用者名稱
+// 參數 password: 要驗證的使用者密碼
 public bool IsAuthenticated(string username, string password)
 {
     try
     {
         string domain = "yourdomain.com"; // 修改為你的域名
         string path = "LDAP://" + domain;
+        
+        // 使用 DirectoryEntry 類別來建立目錄項目，使用提供的使用者名稱和密碼進行驗證
         using(DirectoryEntry entry = new DirectoryEntry(path, username, password)){
             DirectorySearcher searcher = new DirectorySearcher(entry);
+            
+            // 在目錄中搜尋使用者，如果找到結果，則代表驗證成功
             SearchResult result = searcher.FindOne();
             return true;
         };
     }
     catch (Exception ex)
     {
+        // 如果出現異常，代表驗證失敗
         return false;
     }
 }
