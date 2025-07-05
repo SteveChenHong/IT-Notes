@@ -1,100 +1,136 @@
-### windows netsata 指令(可看作net網路stat狀態)
-可以查詢本機網路和外界網路連線的指令，可以透過這個指令的查詢得知有沒有奇怪的連線在你的機器中連線，  
-也可透過此指令瞭解電腦連線的狀況。
+# Windows `netstat` 指令使用說明
 
-### 1.命令提示字元輸入以下(或用PowerShell)
+`netstat` 指令可用於查看本機網路與外部網路之間的連線狀況。您可以透過這些指令來查詢是否有異常連線，並檢視您的電腦網路連線狀況。
 
-```C:\WINDOWS\system32>netstat -ano```
-  
-狀態說明：  
-  
-－LISTENING：偵聽（LISTENING）狀態，等待連接。
+## 1. 基本命令
 
-－ESTABLISHED：ESTABLISHED的意思是建立連接。表示兩臺機器正在通信。  
+### 查詢所有連線狀態
+在命令提示字元或 PowerShell 輸入以下命令：
 
-－CLOSE_WAIT：  
-　對方主動關閉連接或者網絡異常導致連接中斷，這時我方的狀態會變成CLOSE_WAIT  
-　此時我方要調用close()來使得連接正確關閉  
- 
-－TIME_WAIT：我方主動調用close()斷開連接，收到對方確認後狀態變爲TIME_WAIT。  
+```powershell
+C:\WINDOWS\system32>netstat -ano
+````
 
-－SYN_SENT：連線初始時，發送封包的狀態。  
+### 狀態說明：
 
-－SYN_RECV：接收到一個要求連線的主動連線封包。  
+* **LISTENING**：偵聽狀態，等待外部連接。
+* **ESTABLISHED**：連線已建立，兩台設備正在通信。
+* **CLOSE\_WAIT**：對方主動關閉連線或網路異常，這時本機狀態為 CLOSE\_WAIT，應呼叫 `close()` 正常關閉。
+* **TIME\_WAIT**：本機主動關閉連線，等待對方確認關閉。
+* **SYN\_SENT**：連線初始化時，發送 SYN 封包以開始連接。
+* **SYN\_RECV**：接收到要求連線的 SYN 封包。
+* **FIN\_WAIT1**：服務器端已中斷連線，正在斷開中。
+* **FIN\_WAIT2**：連線已關閉，正在等待對方確認斷線。
 
-－FIN_WAIT1：該插槽服務(socket)已中斷，該連線正在斷線當中。  
+### 顯示範例：
 
-－FIN_WAIT2：該連線已掛斷，但正在等待對方主機回應斷線確認的封包。  
+| 協定  | 本機位址                | 外部位址              | 狀態          | PID   |
+| --- | ------------------- | ----------------- | ----------- | ----- |
+| TCP | 192.168.0.100:50867 | 140.82.114.25:443 | ESTABLISHED | 10224 |
 
-顯示範例：  
+這表示本機的端口 `50867` 已經與 `140.82.114.25:443` 連線成功，PID 為 `10224`。
 
-使用中連線
-|協定|本機位址|外部位址|狀態|PID|
-|:-|:-|:-|:-|:-|
-|TCP|192.168.0.100:50867|140.82.114.25:443|ESTABLISHED|10224|  
+> **注意**：可以透過「工作管理員」 -> 「詳細資料」頁籤查詢處理程序的 PID。
 
-表示本機port:50867目前與207.46.125.33:443主機連線已建立完成，PID是10224  
+## 2. 顯示命令詳細參數說明
 
-「工作管理員」 -> 「詳細資料」頁籤中，可查詢處理程序PID
+```powershell
+C:\WINDOWS\system32>netstat /?
+```
 
-### 2.列出每個屬性說明
-```C:\WINDOWS\system32>netstat /?```
+### 參數說明：
 
-顯示通訊協定統計資料與目前的 TCP/IP 網路連線  
--a 顯示所有連線和接聽的連接埠  
--b 顯示在建立各個連線或接聽連接埠時會用到的可執行檔  
--n 以數字格式顯示位址和連接埠號碼  
--o 顯示與各連線相關的擁有流程識別碼  
--p proto 顯示由 proto 指定之通訊協定的連線; proto  
-　　  　&nbsp;&nbsp;可以是以下任一項: TCP、UDP、TCPv6 或 UDPv6。若搭配 -s  
-　　　  &nbsp;&nbsp;選項使用來顯示各通訊協定的統計資料，proto 可以是以下任一項:  
-　　　　IP、IPv6、ICMP、ICMPv6、TCP、TCPv6、UDP 或 UDPv6。  
-.....
+* **-a**：顯示所有連線與偵聽中的端口。
+* **-b**：顯示每個連線或偵聽端口對應的可執行檔。
+* **-n**：以數字格式顯示位址與端口號碼。
+* **-o**：顯示與每個連線對應的進程識別碼 (PID)。
+* **-p proto**：顯示指定協定（如 TCP、UDP、TCPv6、UDPv6）的連線統計。
 
-```C:\WINDOWS\system32>find /?```(powershell 好像只能用 findstr)  
-搜尋一或多個檔案中的文字字串。  
+例如，若使用 `-p` 參數，可以指定某一個協定：
 
-FIND [/V] [/C] [/N] [/I] [/OFF[LINE]] "string" [[drive:][path]filename[ ...]]  
- 
-  /V         顯示所有不包含指定字串的行。  
-  /C         只顯示包含字串的行數。  
-  /N         顯示每一行及它的行號。  
-  /I         當搜尋字串時，忽略字元的大小寫。  
-  /OFF[LINE] 不要略過有離線屬性集的檔案。  
-  "string"   指定要尋找的文字字串。  
-  [drive:][path]filename  
-指定要搜尋的一或多個檔案。  
+```powershell
+C:\WINDOWS\system32>netstat -p tcp
+```
 
-如果沒有指定路徑，FIND 會搜尋在提示時所輸入的文字  
-或者在其他的命令中搜尋。  
+這會顯示所有 TCP 連線。
 
-### 3.其它實用用法
+## 3. 其他實用用法
 
-想監控特定連線的來源或 Port，一些小技巧，用例子：  
+### 篩選特定 IP 或端口
 
-```netstat -na | find "特定IP"```  
-```netstat -na | find "特定Port"```  
-```netstat -na | find "特定IP:特定Port"```  
-像是：  
-```netstat -na | find "192.168.0.100"```  
-```netstat -na | find "5353"```  
-```netstat -na | find "192.168.0.100:5353"```  
+您可以使用 `find` 命令過濾 `netstat` 輸出的結果，查詢特定的 IP 或端口。以下是幾個範例：
 
-```netstat –na 1 | find "特定IP"```  
-顯示特定 IP 之連線，每隔一秒更新畫面一次 (適用於像是你已鎖定可疑對象，但不知他何時會連過來)  
--a 代表列出所有連線  
--n 代表僅列出 IP 及 Port，不解析為 hostname 及 service name，速度會快很多  
+* 查詢特定 IP 的連線：
 
-```netstat –nao 1 | find "特定IP"```  
-加上 -o 參數可顯示觸發該連線之 process ID，  
-欲知 process name 則可以透過內建的 tasklist 這程式  
+  ```powershell
+  netstat -na | find "192.168.0.100"
+  ```
 
-```netstat –na 1 | find "4444" | find "ESTABLISHED"```  
-也可以針對特定 Port，不分對象的進行監控，  
-再透過 find "ESTABLISHED" 篩選  
+* 查詢特定端口的連線：
 
-```netstat -a -p tcp | find "7218"```    
-只列出IPv4的監聽口
+  ```powershell
+  netstat -na | find "5353"
+  ```
 
-```netstat -a | find /c "7218"```  
-取得 7218 port 的筆數
+* 查詢特定 IP 和端口的連線：
+
+  ```powershell
+  netstat -na | find "192.168.0.100:5353"
+  ```
+
+* 每秒更新一次顯示特定 IP 的連線：
+
+  ```powershell
+  netstat -na 1 | find "192.168.0.100"
+  ```
+
+* 查詢特定端口並篩選出已建立的連線：
+
+  ```powershell
+  netstat -na 1 | find "4444" | find "ESTABLISHED"
+  ```
+
+### 顯示特定連線的進程 PID
+
+如果您希望查看觸發某個連線的進程 PID，您可以加上 `-o` 參數，並使用 `tasklist` 查詢對應的進程名稱：
+
+```powershell
+netstat -nao 1 | find "192.168.0.100"
+```
+
+這將顯示與特定 IP 相關的所有連線及其 PID。您可以根據 PID 使用 `tasklist` 查詢對應的進程名稱。
+
+```powershell
+tasklist /fi "PID eq 10224"
+```
+
+### 只列出 IPv4 監聽端口
+
+```powershell
+netstat -a -p tcp | find "7218"
+```
+
+這將顯示只有 IPv4 地址的監聽端口。
+
+### 計算特定端口的連線數量
+
+```powershell
+netstat -a | find /c "7218"
+```
+
+這會顯示與 `7218` 端口相關的連線數量。
+
+---
+
+### 小技巧
+
+* `netstat` 指令適合用來監控和排查網路連線問題，您可以定期執行此命令來檢查系統的網路連線狀況。
+* 透過 `find` 過濾特定 IP 或端口，可以更高效地監控疑似異常的連線。
+* 如果您發現可疑連線，使用 PID 來對應進程，並在 `工作管理員` 中進行進一步分析。
+
+---
+
+這些指令將幫助您更好地管理和監控 Windows 系統中的網路連線，避免不正常的連線或潛在的安全風險。
+
+```
+```
