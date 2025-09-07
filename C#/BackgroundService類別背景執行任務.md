@@ -1,4 +1,4 @@
-# .NET BackgroundService 高併發與背景任務完整指南（含詳盡註解）
+# .NET BackgroundService 高併發與背景任務完整指南（含 IHostedService 比較）
 
 ## 什麼是 BackgroundService
 
@@ -37,19 +37,15 @@ using System.Collections.Generic;
 
 public class ConcurrentQueueLogProcessor
 {
-    // 使用 ConcurrentQueue 保存 log，支援多線程安全
     private static readonly ConcurrentQueue<string> _queue = new();
 
-    // 生產者：將 log 放入佇列
     public void EnqueueLog(string log) => _queue.Enqueue(log);
 
-    // 消費者：批次處理 log
     public void ProcessLogs()
     {
         var batch = new List<string>();
-        int batchSize = 50; // 每次處理 50 筆
+        int batchSize = 50;
 
-        // 嘗試取出資料，非阻塞
         while (_queue.TryDequeue(out var log))
         {
             batch.Add(log);
@@ -59,7 +55,6 @@ public class ConcurrentQueueLogProcessor
         if (batch.Count > 0) WriteBatch(batch);
     }
 
-    // 模擬寫入磁碟或資料庫
     private void WriteBatch(List<string> batch)
     {
         Console.WriteLine($"ConcurrentQueue: Writing {batch.Count} logs to disk...");
@@ -79,19 +74,15 @@ using System.Threading.Tasks;
 
 public class BlockingCollectionLogProcessor
 {
-    // 最大容量 1000，可阻塞生產者直到有空間
     private readonly BlockingCollection<string> _collection = new(1000);
 
-    // 生產者：放入 log，可能阻塞
     public void EnqueueLog(string log) => _collection.Add(log);
 
-    // 消費者：批次處理 log
     public void ProcessLogs()
     {
         var batch = new List<string>();
         int batchSize = 50;
 
-        // 嘗試取出資料，可能阻塞直到有資料
         while (_collection.TryTake(out var log))
         {
             batch.Add(log);
@@ -101,7 +92,6 @@ public class BlockingCollectionLogProcessor
         if (batch.Count > 0) WriteBatch(batch);
     }
 
-    // 模擬寫入磁碟或資料庫
     private void WriteBatch(List<string> batch)
     {
         Console.WriteLine($"BlockingCollection: Writing {batch.Count} logs to disk...");
@@ -123,18 +113,15 @@ using Microsoft.Extensions.Hosting;
 
 public class ChannelLogWorker : BackgroundService
 {
-    // 注入 Channel 物件
     private readonly Channel<string> _channel;
 
     public ChannelLogWorker(Channel<string> channel) => _channel = channel;
 
-    // 背景服務主執行邏輯
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var batch = new List<string>();
         int batchSize = 50;
 
-        // 非同步讀取 channel 內容，支援優雅停止
         await foreach (var log in _channel.Reader.ReadAllAsync(stoppingToken))
         {
             batch.Add(log);
@@ -145,7 +132,6 @@ public class ChannelLogWorker : BackgroundService
             }
         }
 
-        // 停止前處理剩餘 log
         if (batch.Count > 0) await WriteBatch(batch);
     }
 
@@ -162,16 +148,13 @@ public class ChannelLogWorker : BackgroundService
 ## 優雅停止範例
 
 ```csharp
-// ExecuteAsync 使用 CancellationToken 偵測停止訊號
 protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 {
     while (!stoppingToken.IsCancellationRequested)
     {
-        // 背景工作邏輯
-        await Task.Delay(1000, stoppingToken); // 模擬工作
+        await Task.Delay(1000, stoppingToken);
     }
 
-    // 優雅釋放資源或處理最後批次
     await CleanupBeforeShutdown();
 }
 
@@ -194,32 +177,102 @@ using System.Threading.Channels;
 var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostContext, services) =>
     {
-        // 註冊 ConcurrentQueueLogProcessor
         services.AddSingleton<ConcurrentQueueLogProcessor>();
-
-        // 註冊 BlockingCollectionLogProcessor
         services.AddSingleton<BlockingCollectionLogProcessor>();
-
-        // 註冊 Channel，無界限
         services.AddSingleton(Channel.CreateUnbounded<string>());
 
-        // 註冊背景服務 ChannelLogWorker
         services.AddHostedService<ChannelLogWorker>();
     });
 
-// 啟動 Console 應用程式 Generic Host
 await builder.RunConsoleAsync();
 ```
 
 ---
 
+## IHostedService vs BackgroundService 比較
+
+### 基本概念
+
+| 類別 | 描述 |
+|------|------|
+| `IHostedService` | 定義 StartAsync/StopAsync 介面，需自行管理邏輯和資源釋放，靈活性高 |
+| `BackgroundService` | 已實作 IHostedService 並提供 ExecuteAsync，簡化開發流程，內建 CancellationToken |
+
+### 使用差異
+
+| 特性 | IHostedService | BackgroundService |
+|------|----------------|-----------------|
+| 開發複雜度 | 高 | 低 |
+| 非同步支援 | 手動實作 | 內建 async/await |
+| CancellationToken | 需自行管理 | 內建支援優雅停止 |
+| 多個服務共存 | 支援 | 支援 |
+| 彈性 | 完全控制 | 部分控制 |
+
+### 範例對比
+
+#### IHostedService 範例
+
+```csharp
+public class MyHostedService : IHostedService
+{
+    private Task _backgroundTask;
+    private CancellationTokenSource _cts;
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _backgroundTask = Task.Run(async () =>
+        {
+            while (!_cts.Token.IsCancellationRequested)
+            {
+                Console.WriteLine("IHostedService running...");
+                await Task.Delay(1000);
+            }
+        });
+        return Task.CompletedTask;
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _cts.Cancel();
+        await _backgroundTask;
+        Console.WriteLine("IHostedService stopped.");
+    }
+}
+```
+
+#### BackgroundService 範例
+
+```csharp
+public class MyBackgroundService : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            Console.WriteLine("BackgroundService running...");
+            await Task.Delay(1000, stoppingToken);
+        }
+        Console.WriteLine("BackgroundService stopped.");
+    }
+}
+```
+
+### 建議使用場景
+
+| 類別 | 適合場景 | 建議理由 |
+|------|------------|---------|
+| IHostedService | 需要完全自訂 Start/Stop 流程或管理多個背景任務 | 高度彈性，但開發成本高 |
+| BackgroundService | 一般背景工作、長時間運行任務、非同步任務 | 開發簡單，支援優雅停止與 async/await，官方推薦 |
+
+---
+
 ## 小結
 
-* **ConcurrentQueue**: 非阻塞，高併發簡單批次處理
-* **BlockingCollection**: 支援容量限制，可阻塞操作，控制記憶體使用
-* **Channel**: 官方推薦，支援 async/await，非阻塞高併發批次處理
-* **BackgroundService + CancellationToken**: 可優雅停止任務
-* **Generic Host**: 管理生命週期，簡化啟動流程
+* ConcurrentQueue、BlockingCollection、Channel 都可做高併發背景任務處理，Channel 為官方推薦。
+* BackgroundService 封裝 IHostedService，簡化背景任務開發，支援優雅停止。
+* IHostedService 適合需要高度自訂流程的情境。
+* 結合 Generic Host 可統一管理生命週期與依賴注入。
 
 ---
 
