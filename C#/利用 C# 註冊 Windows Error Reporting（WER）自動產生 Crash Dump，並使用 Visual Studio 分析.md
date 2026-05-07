@@ -148,76 +148,70 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+namespace YourProject.Helpers;
+
+/// <summary>
+/// Windows Error Reporting (WER) 本地轉儲協助工具
+/// 協助在程式發生 Crash 時自動產生 Dump 檔案供後續偵錯
+/// </summary>
 public static class WerDumpHelper
 {
+    private const string WerLocalDumpsPath = @"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps";
+
     /// <summary>
-    /// 設定 WER LocalDumps 註冊表
-    /// 讓 Windows 在程式崩潰時自動產生 dump 檔案
+    /// 註冊 WER LocalDumps 註冊表
     /// </summary>
-    public static void Register(
-        string dumpFolder,
-        int dumpType = 2,
-        int dumpCount = 10)
+    /// <param name="dumpFolder">Dump 檔案儲存路徑</param>
+    /// <param name="dumpType">
+    /// Dump 類型：
+    /// 0: Custom dump, 1: Mini dump, 2: Full dump (預設)
+    /// </param>
+    /// <param name="dumpCount">保留的 Dump 檔案數量上限 (預設 10)</param>
+    /// <exception cref="UnauthorizedAccessException">若無系統管理員權限則拋出</exception>
+    public static void Register(string dumpFolder, int dumpType = 2, int dumpCount = 10)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return;
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
 
-        string exeName =
-            Path.GetFileName(
-                Process.GetCurrentProcess()
-                       .MainModule!
-                       .FileName);
+        // 取得目前的執行檔名稱 (例如: MyApp.exe)
+        string exeName = Path.GetFileName(Process.GetCurrentProcess().MainModule?.FileName) 
+            ?? throw new InvalidOperationException("無法取得執行檔名稱");
 
-        string keyPath =
-            $@"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\{exeName}";
+        string keyPath = $@"{WerLocalDumpsPath}\{exeName}";
 
-        using var key =
-            Registry.LocalMachine.CreateSubKey(keyPath);
-
+        // 建立或開啟註冊表路徑
+        using var key = Registry.LocalMachine.CreateSubKey(keyPath);
         if (key == null)
         {
-            throw new UnauthorizedAccessException(
-                "無法建立註冊表，請以系統管理員執行。");
+            throw new UnauthorizedAccessException("無法建立註冊表機碼，請確認是否以「系統管理員」身分執行。");
         }
 
-        Directory.CreateDirectory(dumpFolder);
+        // 確保目標資料夾存在
+        if (!Directory.Exists(dumpFolder))
+        {
+            Directory.CreateDirectory(dumpFolder);
+        }
 
-        key.SetValue(
-            "DumpFolder",
-            dumpFolder,
-            RegistryValueKind.ExpandString);
-
-        key.SetValue(
-            "DumpType",
-            dumpType,
-            RegistryValueKind.DWord);
-
-        key.SetValue(
-            "DumpCount",
-            dumpCount,
-            RegistryValueKind.DWord);
+        // 設定 WER 參數
+        // 使用 ExpandString 以支援如 %LOCALAPPDATA% 的環境變數
+        key.SetValue("DumpFolder", dumpFolder, RegistryValueKind.ExpandString);
+        key.SetValue("DumpType", dumpType, RegistryValueKind.DWord);
+        key.SetValue("DumpCount", dumpCount, RegistryValueKind.DWord);
     }
 
     /// <summary>
-    /// 移除 WER LocalDumps 設定
+    /// 移除 WER LocalDumps 設定，停止自動產生 Dump
     /// </summary>
     public static void Unregister()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return;
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
 
-        string exeName =
-            Path.GetFileName(
-                Process.GetCurrentProcess()
-                       .MainModule!
-                       .FileName);
+        string exeName = Path.GetFileName(Process.GetCurrentProcess().MainModule?.FileName);
+        if (string.IsNullOrEmpty(exeName)) return;
 
-        string keyPath =
-            $@"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\{exeName}";
+        string keyPath = $@"{WerLocalDumpsPath}\{exeName}";
 
-        Registry.LocalMachine.DeleteSubKey(
-            keyPath,
-            throwOnMissingSubKey: false);
+        // 刪除子機碼，若不存在也不拋出例外
+        Registry.LocalMachine.DeleteSubKeyTree(keyPath, throwOnMissingSubKey: false);
     }
 }
 ```
